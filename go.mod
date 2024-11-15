@@ -3,7 +3,9 @@ module github.com/purisaurabh/car-rental
 go 1.22.4
 
 require (
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/go-sql-driver/mysql v1.8.1
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/gorilla/mux v1.8.1
 	github.com/rs/cors v1.11.1
@@ -11,6 +13,7 @@ require (
 	github.com/urfave/cli v1.22.16
 	github.com/urfave/negroni v1.0.0
 	go.uber.org/zap v1.21.0
+	golang.org/x/crypto v0.27.0
 )
 
 require (
@@ -20,6 +23,8 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect

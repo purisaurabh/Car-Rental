@@ -19,6 +19,11 @@ type successResponse struct {
 	Data interface{} `json:"data"`
 }
 
+type MessageResponseWithUserID struct {
+	UserId  int64  `json:"user_id"`
+	Message string `json:"message"`
+}
+
 // SuccessResponse function returns a response that is returned when an success is encountered
 func SuccessResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")

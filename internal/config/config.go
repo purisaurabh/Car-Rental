@@ -12,6 +12,8 @@ type config struct {
 	appPort       int
 	migrationPath string
 	db            databaseConfig
+	secretKey     string
+	expiryTime    string
 }
 
 var appConfig config
@@ -33,6 +35,8 @@ func Load() {
 		appPort:       readEnvInt("APP_PORT"),
 		migrationPath: readEnvString("MIGRATION_PATH"),
 		db:            newDatabaseConfig(),
+		secretKey:     readEnvString("SECRET_KEY"),
+		expiryTime:    readEnvString("TOKEN_EXPIRATION_HOURS"),
 	}
 }
 
@@ -66,4 +70,12 @@ func checkIfSet(key string) {
 	if !viper.IsSet(key) {
 		panic(fmt.Sprintf("Key %s is not set", key))
 	}
+}
+
+func GetSecretKey() string {
+	return appConfig.secretKey
+}
+
+func GetExpiryTime() string {
+	return appConfig.expiryTime
 }

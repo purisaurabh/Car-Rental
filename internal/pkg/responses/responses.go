@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/purisaurabh/car-rental/internal/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -71,6 +72,11 @@ func ErrorResponse(w http.ResponseWriter, httpStatus int, err error) {
 		writeServerErrorResponse(w)
 		return
 	}
+}
+
+func HandleError(w http.ResponseWriter, statusCode int, message string, err error) {
+	zap.S().Errorw(message, "error", err)
+	ErrorResponse(w, statusCode, errors.ErrInternalServer)
 }
 
 // writeServerErrorResponse writes the error response to help with ErrorResponse

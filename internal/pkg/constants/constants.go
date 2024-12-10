@@ -24,3 +24,7 @@ var UserRegistrationColumns = []string{"name", "email", "password", "mobile", "r
 
 // user login columns
 var UserLoginColumns = []string{"id", "name", "password", "mobile", "role"}
+
+const (
+	UsersTable = "users"
+)

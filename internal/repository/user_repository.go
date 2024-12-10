@@ -21,64 +21,66 @@ type Repository interface {
 }
 
 func NewRepository(DB *sql.DB) Repository {
-	return &RepositoryStruct{
-		DB: DB,
-	}
+	return &RepositoryStruct{DB: DB}
 }
 
-func (user *RepositoryStruct) UserRegistration(ctx context.Context, userReq *UserRegistrationRepo) (int64, error) {
-	values := []interface{}{userReq.Name, userReq.Email, userReq.Password, userReq.Mobile, userReq.Role, userReq.CreatedAt, userReq.UpdatedAt}
-
-	// using squirrel to insert data into the database
-	insertQuery, args, err := squirrel.Insert("users").Columns(constants.UserRegistrationColumns...).Values(values...).PlaceholderFormat(squirrel.Question).ToSql()
+func (repo *RepositoryStruct) UserRegistration(ctx context.Context, userReq *UserRegistrationRepo) (int64, error) {
+	// Build the SQL query using squirrel
+	query, args, err := squirrel.Insert(constants.UsersTable).
+		Columns(constants.UserRegistrationColumns...).
+		Values(userReq.Name, userReq.Email, userReq.Password, userReq.Mobile, userReq.Role, userReq.CreatedAt, userReq.UpdatedAt).
+		PlaceholderFormat(squirrel.Question).
+		ToSql()
 	if err != nil {
-		zap.S().Error("error generating the user insert query : ", err)
-		return 0, err
+		zap.S().Errorw("failed to build insert query", "error", err)
+		return 0, fmt.Errorf("failed to build insert query: %w", err)
 	}
 
-	result, err := user.DB.ExecContext(ctx, insertQuery, args...)
+	// Execute the query
+	result, err := repo.DB.ExecContext(ctx, query, args...)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			zap.S().Error("error inserting the user data : ", err)
-			return 0, err
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
+			zap.S().Warnw("duplicate entry for user registration", "email", userReq.Email, "error", err)
+			return 0, fmt.Errorf("duplicate entry: %w", err)
 		}
-
-		if err, ok := err.(*mysql.MySQLError); ok {
-			if err.Number == 1062 {
-				zap.S().Error("error inserting the user data : ", err)
-				return 0, err
-			}
-		}
-
-		zap.S().Error("error inserting the user data : ", err)
-		return 0, err
+		zap.S().Errorw("failed to execute user registration query", "error", err)
+		return 0, fmt.Errorf("failed to execute query: %w", err)
 	}
+
+	// Get the last inserted ID
 	userID, err := result.LastInsertId()
 	if err != nil {
-		zap.S().Error("error getting the last inserted user id : ", err)
-		return 0, err
+		zap.S().Errorw("failed to get last inserted ID", "error", err)
+		return 0, fmt.Errorf("failed to fetch last insert id: %w", err)
 	}
+
 	return userID, nil
 }
 
-func (user *RepositoryStruct) UserLogin(ctx context.Context, email string) (UserInfo, error) {
+func (repo *RepositoryStruct) UserLogin(ctx context.Context, email string) (UserInfo, error) {
 	var userInfo UserInfo
-	query, args, err := squirrel.Select(constants.UserLoginColumns...).From("users").Where(squirrel.Eq{"email": email}).ToSql()
+
+	// Build the SQL query using squirrel
+	query, args, err := squirrel.Select(constants.UserLoginColumns...).
+		From(constants.UsersTable).
+		Where(squirrel.Eq{"email": email}).
+		PlaceholderFormat(squirrel.Question).
+		ToSql()
 	if err != nil {
-		zap.S().Error("error generating the user login query : ", err)
-		return UserInfo{}, err
+		zap.S().Errorw("failed to build login query", "email", email, "error", err)
+		return UserInfo{}, fmt.Errorf("failed to build login query: %w", err)
 	}
 
-	err = user.DB.QueryRowContext(ctx, query, args...).Scan(&userInfo.UserID, &userInfo.Name, &userInfo.Password, &userInfo.Mobile, &userInfo.Role)
+	// Execute the query and scan the result
+	err = repo.DB.QueryRowContext(ctx, query, args...).Scan(&userInfo.UserID, &userInfo.Name, &userInfo.Password, &userInfo.Mobile, &userInfo.Role)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			zap.S().Error("error getting the user data : ", err)
+			zap.S().Infow("user not found during login", "email", email)
 			return UserInfo{}, fmt.Errorf("user not found")
 		}
-		zap.S().Error("error getting the user data : ", err)
-		return UserInfo{}, err
+		zap.S().Errorw("failed to execute login query", "email", email, "error", err)
+		return UserInfo{}, fmt.Errorf("failed to execute login query: %w", err)
 	}
 
 	return userInfo, nil
-
 }

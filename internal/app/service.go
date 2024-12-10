@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/purisaurabh/car-rental/internal/pkg/middleware"
@@ -27,11 +28,14 @@ func NewService(repo repository.Repository) *service {
 }
 
 func (userService *service) UserRegistration(ctx context.Context, userRequest *specs.UserRegistrationRequest) (int64, error) {
+	// Generate hashed password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userRequest.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return 0, err
+		zap.S().Errorw("Failed to hash password", "email", userRequest.Email, "error", err)
+		return 0, fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	// Prepare user repository model
 	userRegistrationRepo := repository.UserRegistrationRepo{
 		Name:      userRequest.Name,
 		Email:     userRequest.Email,
@@ -42,47 +46,50 @@ func (userService *service) UserRegistration(ctx context.Context, userRequest *s
 		UpdatedAt: time.Now().Unix(),
 	}
 
+	// Persist the user data
 	userID, err := userService.Repo.UserRegistration(ctx, &userRegistrationRepo)
 	if err != nil {
-		zap.S().Error("unable to register the user : ", err, "for the email : ", userRequest.Email)
+		zap.S().Errorw("Failed to register user", "email", userRequest.Email, "error", err)
+		return 0, fmt.Errorf("failed to register user: %w", err)
 	}
-	zap.S().Info("user registered successfully with the email : ", userRequest.Email)
-	return userID, err
+
+	zap.S().Infow("User registered successfully", "email", userRequest.Email, "userID", userID)
+	return userID, nil
 }
 
 func (userService *service) UserLogin(ctx context.Context, userRequest *specs.UserLoginRequest) (specs.UserLoginResponse, error) {
-	// check the email in the databae
+	// Retrieve user data from the repository
 	userInfo, err := userService.Repo.UserLogin(ctx, userRequest.Email)
 	if err != nil {
-		zap.S().Error("unable to login the user : ", err, "for the email : ", userRequest.Email)
-		return specs.UserLoginResponse{}, err
+		zap.S().Errorw("User login failed", "email", userRequest.Email, "error", err)
+		return specs.UserLoginResponse{}, fmt.Errorf("user login failed: %w", err)
 	}
 
-	// compare the password
-	err = bcrypt.CompareHashAndPassword([]byte(userInfo.Password), []byte(userRequest.Password))
-	if err != nil {
-		zap.S().Error("password does not match for the email : ", userRequest.Email)
-		return specs.UserLoginResponse{}, err
+	// Compare provided password with the hashed password
+	if err = bcrypt.CompareHashAndPassword([]byte(userInfo.Password), []byte(userRequest.Password)); err != nil {
+		zap.S().Warnw("Password mismatch", "email", userRequest.Email)
+		return specs.UserLoginResponse{}, fmt.Errorf("invalid credentials")
 	}
 
+	// Prepare payload for token generation
 	payload := specs.TokenPayload{
 		UserID: userInfo.UserID,
 		Email:  userRequest.Email,
 		Role:   userInfo.Role,
 	}
 
-	// create the token
+	// Generate token
 	token, err := middleware.CreateToken(payload)
 	if err != nil {
-		zap.S().Error("unable to create the token : ", err)
-		return specs.UserLoginResponse{}, err
+		zap.S().Errorw("Failed to generate token", "email", userRequest.Email, "error", err)
+		return specs.UserLoginResponse{}, fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	loginResponse := specs.UserLoginResponse{
+	response := specs.UserLoginResponse{
 		UserID: userInfo.UserID,
 		Token:  token,
 	}
 
-	zap.S().Info("user logged in successfully with the email : ", userRequest.Email)
-	return loginResponse, nil
+	zap.S().Infow("User logged in successfully", "email", userRequest.Email)
+	return response, nil
 }

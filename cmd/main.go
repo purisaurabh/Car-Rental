@@ -8,9 +8,20 @@ import (
 	db "github.com/purisaurabh/car-rental/internal/database"
 	"github.com/purisaurabh/car-rental/internal/server"
 	"github.com/urfave/cli"
+	"go.uber.org/zap"
 )
 
 func main() {
+
+	logger, err := zap.NewProduction()
+	if err != nil {
+		fmt.Printf("Error initializing logger: %v\n", err)
+		os.Exit(1)
+	}
+
+	// defer the sync call to flush the buffer before the application exits
+	defer logger.Sync()
+	zap.ReplaceGlobals(logger)
 
 	config.Load()
 	cliApp := cli.NewApp()

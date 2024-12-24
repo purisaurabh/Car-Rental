@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/purisaurabh/car-rental/internal/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -17,6 +18,11 @@ type errorResponse struct {
 // successResponse is a response that is returned when an success is encountered
 type successResponse struct {
 	Data interface{} `json:"data"`
+}
+
+type MessageResponseWithUserID struct {
+	UserId  int64  `json:"user_id"`
+	Message string `json:"message"`
 }
 
 // SuccessResponse function returns a response that is returned when an success is encountered
@@ -66,6 +72,11 @@ func ErrorResponse(w http.ResponseWriter, httpStatus int, err error) {
 		writeServerErrorResponse(w)
 		return
 	}
+}
+
+func HandleError(w http.ResponseWriter, statusCode int, message string, err error) {
+	zap.S().Errorw(message, "error", err)
+	ErrorResponse(w, statusCode, errors.ErrInternalServer)
 }
 
 // writeServerErrorResponse writes the error response to help with ErrorResponse

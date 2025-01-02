@@ -19,12 +19,9 @@ var CorsOptions = cors.Options{
 	AllowedHeaders:   []string{"*"},
 }
 
-// user registration columns
-var UserRegistrationColumns = []string{"name", "email", "password", "mobile", "role", "created_at", "updated_at"}
-
-// user login columns
-var UserLoginColumns = []string{"id", "name", "password", "mobile", "role"}
+type ContextKey string
 
 const (
-	UsersTable = "users"
+	UserIDKey    ContextKey = "user_id"
+	UserRoleKey  ContextKey = "role"
 )

@@ -24,7 +24,7 @@ func StartApiServer() {
 		log.Fatal("Error initializing repository:", err)
 	}
 
-	service := app.NewService(&repo)
+	service := app.NewServices(repo)
 
 	router := api.Routes(ctx, service)
 

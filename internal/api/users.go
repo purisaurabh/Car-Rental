@@ -4,14 +4,15 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/purisaurabh/car-rental/internal/app"
+	"github.com/purisaurabh/car-rental/internal/api/decoder"
+	"github.com/purisaurabh/car-rental/internal/app/user"
 	specs "github.com/purisaurabh/car-rental/internal/pkg/responses"
 )
 
-func UserRegistration(ctx context.Context, userService app.Service) func(http.ResponseWriter, *http.Request) {
+func UserRegistration(ctx context.Context, userService user.Service) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Decode request
-		req, err := decodeUserRegistrationRequest(r)
+		req, err := decoder.DecodeUserRegistrationRequest(r)
 		if err != nil {
 			specs.HandleError(w, http.StatusBadRequest, "Failed to decode registration request", err)
 			return
@@ -31,17 +32,17 @@ func UserRegistration(ctx context.Context, userService app.Service) func(http.Re
 		}
 
 		// Respond with success
-		specs.SuccessResponse(w, http.StatusCreated, specs.MessageResponseWithUserID{
-			UserId:  userID,
+		specs.SuccessResponse(w, http.StatusCreated, specs.MessageResponseWithID{
+			ID:      userID,
 			Message: "User registered successfully",
 		})
 	}
 }
 
-func UserLogin(ctx context.Context, userService app.Service) func(http.ResponseWriter, *http.Request) {
+func UserLogin(ctx context.Context, userService user.Service) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Decode request
-		req, err := decodeUserLoginRequest(r)
+		req, err := decoder.DecodeUserLoginRequest(r)
 		if err != nil {
 			specs.HandleError(w, http.StatusBadRequest, "Failed to decode login request", err)
 			return

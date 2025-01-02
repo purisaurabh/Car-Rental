@@ -1,4 +1,4 @@
-package api
+package decoder
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"github.com/purisaurabh/car-rental/internal/pkg/specs"
 )
 
-func decodeUserRegistrationRequest(r *http.Request) (specs.UserRegistrationRequest, error) {
+func DecodeUserRegistrationRequest(r *http.Request) (specs.UserRegistrationRequest, error) {
 	var req specs.UserRegistrationRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -18,7 +18,7 @@ func decodeUserRegistrationRequest(r *http.Request) (specs.UserRegistrationReque
 	return req, nil
 }
 
-func decodeUserLoginRequest(r *http.Request) (specs.UserLoginRequest, error) {
+func DecodeUserLoginRequest(r *http.Request) (specs.UserLoginRequest, error) {
 	var req specs.UserLoginRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {

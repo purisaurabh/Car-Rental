@@ -2,29 +2,39 @@ package repository
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/purisaurabh/car-rental/internal/config"
+	"go.uber.org/zap"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-func Init(ctx context.Context) (RepositoryStruct, error) {
+func Init(ctx context.Context) (db *gorm.DB, err error) {
 	dbConfig := config.Database()
-	db, err := sql.Open(dbConfig.Driver(), dbConfig.ConnectionURL())
+	dsn := dbConfig.ConnectionURL()
+
+	db, err = gorm.Open(mysql.Open(dsn) , &gorm.Config{})
 	if err != nil {
-		fmt.Println("Error in opening connection : ", err)
-		return RepositoryStruct{}, err
+		zap.S().Errorw("Error in opening the connection", "error", err)
+		return nil, err
 	}
 
-	if err = db.Ping(); err != nil {
-		fmt.Println("Error in pinging the connection : ", err)
-		return RepositoryStruct{}, err
+	sqlDB , err := db.DB()	
+	if err != nil {
+		zap.S().Errorw("Error in getting the database connection", "error", err)
+		return nil, err
 	}
 
-	db.SetMaxIdleConns(dbConfig.MaxPoolSize())
-	db.SetMaxOpenConns(dbConfig.MaxOpenConns())
-	db.SetConnMaxLifetime(time.Duration(dbConfig.MaxLifeTimeMins()) * time.Minute)
-	return RepositoryStruct{DB: db}, nil
+	// ping the database
+	if err = sqlDB.PingContext(ctx); err != nil {
+		zap.S().Errorw("Error in pinging the database", "error", err)
+		return nil, err
+	}
+
+
+	sqlDB.SetMaxIdleConns(dbConfig.MaxPoolSize())
+	sqlDB.SetMaxOpenConns(dbConfig.MaxOpenConns())
+	sqlDB.SetConnMaxLifetime(time.Duration(dbConfig.MaxLifeTimeMins()) * time.Minute)
+	return db, nil
 }

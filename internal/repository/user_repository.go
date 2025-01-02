@@ -2,85 +2,59 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/go-sql-driver/mysql"
-	"github.com/purisaurabh/car-rental/internal/pkg/constants"
+	"github.com/purisaurabh/car-rental/internal/repository/model"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
-type RepositoryStruct struct {
-	DB *sql.DB
+type userStore struct {
+	BaseRepository
 }
 
-type Repository interface {
-	UserRegistration(ctx context.Context, userReq *UserRegistrationRepo) (int64, error)
-	UserLogin(ctx context.Context, email string) (UserInfo, error)
+type UserStorer interface {
+	UserRegistration(ctx context.Context, userReq *model.UserRegistrationRepo) (int64, error)
+	UserLogin(ctx context.Context, email string) (model.Users, error)
 }
 
-func NewRepository(DB *sql.DB) Repository {
-	return &RepositoryStruct{DB: DB}
+func NewUserRepo(db *gorm.DB) UserStorer{
+	return &userStore{
+		BaseRepository: BaseRepository{DB: db},
+	}
 }
 
-func (repo *RepositoryStruct) UserRegistration(ctx context.Context, userReq *UserRegistrationRepo) (int64, error) {
-	// Build the SQL query using squirrel
-	query, args, err := squirrel.Insert(constants.UsersTable).
-		Columns(constants.UserRegistrationColumns...).
-		Values(userReq.Name, userReq.Email, userReq.Password, userReq.Mobile, userReq.Role, userReq.CreatedAt, userReq.UpdatedAt).
-		PlaceholderFormat(squirrel.Question).
-		ToSql()
-	if err != nil {
-		zap.S().Errorw("failed to build insert query", "error", err)
-		return 0, fmt.Errorf("failed to build insert query: %w", err)
+func (repo *userStore) UserRegistration(ctx context.Context, user *model.UserRegistrationRepo) (int64, error) {
+	// Insert the user into the database using GORM
+	result := repo.DB.Create(&user)
+
+	if result.Error != nil {
+		zap.S().Errorw("failed to register user", "error", result.Error , "user ID ", user.ID)
+		return 0, fmt.Errorf("failed to register user: %w", result.Error)
 	}
 
-	// Execute the query
-	result, err := repo.DB.ExecContext(ctx, query, args...)
-	if err != nil {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == 1062 {
-			zap.S().Warnw("duplicate entry for user registration", "email", userReq.Email, "error", err)
-			return 0, fmt.Errorf("duplicate entry: %w", err)
-		}
-		zap.S().Errorw("failed to execute user registration query", "error", err)
-		return 0, fmt.Errorf("failed to execute query: %w", err)
-	}
-
-	// Get the last inserted ID
-	userID, err := result.LastInsertId()
-	if err != nil {
-		zap.S().Errorw("failed to get last inserted ID", "error", err)
-		return 0, fmt.Errorf("failed to fetch last insert id: %w", err)
-	}
-
-	return userID, nil
+	// Return the inserted user ID
+	return user.ID, nil
 }
 
-func (repo *RepositoryStruct) UserLogin(ctx context.Context, email string) (UserInfo, error) {
-	var userInfo UserInfo
+func (repo *userStore) UserLogin(ctx context.Context, email string) (model.Users, error) {
+	var userInfo model.Users
 
-	// Build the SQL query using squirrel
-	query, args, err := squirrel.Select(constants.UserLoginColumns...).
-		From(constants.UsersTable).
-		Where(squirrel.Eq{"email": email}).
-		PlaceholderFormat(squirrel.Question).
-		ToSql()
-	if err != nil {
-		zap.S().Errorw("failed to build login query", "email", email, "error", err)
-		return UserInfo{}, fmt.Errorf("failed to build login query: %w", err)
-	}
+	// Query the user by email using GORM
+	err := repo.DB.WithContext(ctx).
+		Where("email = ?", email).
+		First(&userInfo).Error
 
-	// Execute the query and scan the result
-	err = repo.DB.QueryRowContext(ctx, query, args...).Scan(&userInfo.UserID, &userInfo.Name, &userInfo.Password, &userInfo.Mobile, &userInfo.Role)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			zap.S().Infow("user not found during login", "email", email)
-			return UserInfo{}, fmt.Errorf("user not found")
+			return model.Users{}, fmt.Errorf("user not found")
 		}
 		zap.S().Errorw("failed to execute login query", "email", email, "error", err)
-		return UserInfo{}, fmt.Errorf("failed to execute login query: %w", err)
+		return model.Users{}, fmt.Errorf("failed to execute login query: %w", err)
 	}
 
+	// Return the user information
 	return userInfo, nil
 }
+

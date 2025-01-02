@@ -23,14 +23,14 @@ func CreateCar(ctx context.Context, carService car.Service) func(w http.Response
 			return
 		}
 
-		res, err := carService.AddCarService(ctx, req)
+		ID, err := carService.AddCarService(ctx, req)
 		if err != nil {
 			specs.HandleError(w, http.StatusInternalServerError, "Failed to register car", err)
 			return
 		}
 
-		specs.SuccessResponse(w, http.StatusCreated, specs.MessageResponseWithUserID{
-			ID:      res,
+		specs.SuccessResponse(w, http.StatusCreated, specs.MessageResponseWithID{
+			ID:      ID,
 			Message: "Car registered successfully",
 		})
 

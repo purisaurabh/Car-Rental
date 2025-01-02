@@ -2,10 +2,10 @@ package specs
 
 import (
 	"encoding/json"
+	errs "errors"
 	"fmt"
 	"net/http"
 
-	"github.com/purisaurabh/car-rental/internal/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -20,8 +20,8 @@ type successResponse struct {
 	Data interface{} `json:"data"`
 }
 
-type MessageResponseWithUserID struct {
-	UserId  int64  `json:"user_id"`
+type MessageResponseWithID struct {
+	ID      int64  `json:"id"`
 	Message string `json:"message"`
 }
 
@@ -76,7 +76,7 @@ func ErrorResponse(w http.ResponseWriter, httpStatus int, err error) {
 
 func HandleError(w http.ResponseWriter, statusCode int, message string, err error) {
 	zap.S().Errorw(message, "error", err)
-	ErrorResponse(w, statusCode, errors.ErrInternalServer)
+	ErrorResponse(w, statusCode, errs.New(message))
 }
 
 // writeServerErrorResponse writes the error response to help with ErrorResponse
